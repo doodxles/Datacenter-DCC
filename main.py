@@ -46,6 +46,25 @@ def init_state():
 
 init_state()
 
+# ------------------ ESTILO GLOBAL BOTONES ------------------
+st.markdown("""
+<style>
+div[data-testid="stButton"] button {
+    background-color: #e98450 !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 20px !important;
+    padding: 10px 20px !important;
+    font-style: italic !important;
+    font-weight: bold !important;
+    cursor: pointer !important;
+}
+div[data-testid="stButton"] button:hover {
+    filter: brightness(0.9);
+}
+</style>
+""", unsafe_allow_html=True)
+
 # ------------------ FUNCIONES AUXILIARES ------------------
 def guardar_csv(data, archivo):
     df_nuevo = pd.DataFrame([data])    # Se convierten los datos a la estructura de Pandas
@@ -171,24 +190,7 @@ def topbar_secundaria():
         if st.button("Inicio", key="home_btn"):   # El boton de inicio cambia st.session_state.pagina para que lea inicio y el router lo interprete y cambie la -
             st.session_state.pagina = "inicio"    # pestaña.
 
-# ------------------ ESTILO GLOBAL BOTONES ------------------
-st.markdown("""
-<style>
-div[data-testid="stButton"] button {
-    background-color: #e98450 !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 20px !important;
-    padding: 10px 20px !important;
-    font-style: italic !important;
-    font-weight: bold !important;
-    cursor: pointer !important;
-}
-div[data-testid="stButton"] button:hover {
-    filter: brightness(0.9);
-}
-</style>
-""", unsafe_allow_html=True)
+
 
 
 # -------- TARJETA IMAGEN ---------
@@ -355,42 +357,48 @@ def pagina_inicio():
                         "codigo": cliente["cliente_id"]
                     }
                     st.session_state.pagina = "perfil"
-
-    # ------------------------------- SECCIÓN BACKUP
+                    
+    # ------ BACK UP --------
+    st.markdown("---")
     
-    st.markdown("<hr>", unsafe_allow_html=True)
-    
+    # Título alineado a la izquierda y más pequeño
     st.markdown(
-        "<h2 style='color:white; text-align:right;'>Backup de datos</h2>",
+        "<h3 style='color:white; text-align:left;'>Backup de datos</h3>",
         unsafe_allow_html=True
     )
     
-    col1, col2 = st.columns(2)
+    col_backup1, col_backup2 = st.columns(2)
     
-    # -------- DESCARGAR BACKUP --------
-    with col1:
-        backup_buffer = crear_backup_zip()
+    with col_backup1:
+        backup_data = crear_backup_zip()
         st.download_button(
-            label="Descargar backup",
-            data=backup_buffer,
+            "Descargar backup",
+            data=backup_data,
             file_name="backup_datos.zip",
             mime="application/zip",
-            use_container_width=True
+            use_container_width=True,
+            key="btn_backup"
         )
     
-    # -------- RESTAURAR BACKUP --------
-    with col2:
-        uploaded_zip = st.file_uploader(
-            "Restaurar desde backup (.zip)",
-            type=["zip"],
-            key="restore_backup"
+    with col_backup2:
+        if "mostrar_uploader" not in st.session_state:
+            st.session_state.mostrar_uploader = False
+    
+        if st.button("Restaurar backup", use_container_width=True, key="btn_restore"):
+            st.session_state.mostrar_uploader = True
+    
+    # Uploader oculto hasta presionar el botón
+    if st.session_state.mostrar_uploader:
+        backup_file = st.file_uploader(
+            "Subir archivo de backup (.zip)",
+            type="zip",
+            key="uploader_backup"
         )
     
-        if uploaded_zip:
-            if st.button("Restaurar datos", use_container_width=True):
-                restaurar_desde_backup(uploaded_zip)
-                st.success("Backup restaurado correctamente.")
-                st.rerun()
+        if backup_file:
+            restaurar_backup(backup_file)
+            st.success("Backup restaurado correctamente")
+            st.session_state.mostrar_uploader = False
 
         
 # -------- PÁGINA PERFIL CLIENTE --------
@@ -1534,3 +1542,4 @@ if __name__ == "__main__":
         # fallback
 
         pagina_inicio()                               # El fallback se genera para que siempre se muestre una pagina en el programa.
+
