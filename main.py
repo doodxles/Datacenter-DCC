@@ -4,6 +4,9 @@ import os
 import sys
 from datetime import datetime, date
 from PIL import Image
+import zipfile
+import io
+import shutil
 
 
 def ruta_recurso(ruta_relativa):
@@ -62,6 +65,80 @@ def cargar_proyectos():
     if os.path.exists(PROYECTOS_CSV):
         return pd.read_csv(PROYECTOS_CSV, dtype=str)     # Utilizando el pd.DataFtame, se puede guardar el CSV de manera ordenada y constante en el archivo
     return pd.DataFrame(columns=["codigo_orden", "nombre_proyecto", "cliente_id", "fecha_inicio", "fecha_fin", "imagenes_paths", "comentarios"])
+
+def crear_backup_zip():
+    buffer = io.BytesIO()
+
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
+
+        # CSV
+        if os.path.exists(CLIENTES_CSV):
+            zipf.write(CLIENTES_CSV, arcname="clientes.csv")
+
+        if os.path.exists(PROYECTOS_CSV):
+            zipf.write(PROYECTOS_CSV, arcname="proyectos.csv")
+
+        # Imágenes clientes
+        img_clientes_dir = os.path.join("assets", "imagenes_clientes")
+        if os.path.exists(img_clientes_dir):
+            for root, _, files in os.walk(img_clientes_dir):
+                for file in files:
+                    path = os.path.join(root, file)
+                    zipf.write(path, arcname=os.path.join("assets/imagenes_clientes", file))
+
+        # Imágenes proyectos
+        img_proyectos_dir = os.path.join("assets", "imagenes_proyectos")
+        if os.path.exists(img_proyectos_dir):
+            for root, _, files in os.walk(img_proyectos_dir):
+                for file in files:
+                    path = os.path.join(root, file)
+                    zipf.write(path, arcname=os.path.join("assets/imagenes_proyectos", file))
+
+    buffer.seek(0)
+    return buffer
+
+def restaurar_desde_backup(uploaded_zip):
+    temp_dir = "temp_restore"
+
+    # Crear carpeta temporal
+    if os.path.exists(temp_dir):
+        shutil.rmtree(temp_dir)
+    os.makedirs(temp_dir)
+
+    # Extraer ZIP
+    with zipfile.ZipFile(uploaded_zip, "r") as zip_ref:
+        zip_ref.extractall(temp_dir)
+
+    # Restaurar CSV
+    clientes_path = os.path.join(temp_dir, "clientes.csv")
+    proyectos_path = os.path.join(temp_dir, "proyectos.csv")
+
+    if os.path.exists(clientes_path):
+        shutil.copy(clientes_path, CLIENTES_CSV)
+
+    if os.path.exists(proyectos_path):
+        shutil.copy(proyectos_path, PROYECTOS_CSV)
+
+    # Restaurar imágenes
+    src_clientes = os.path.join(temp_dir, "assets", "imagenes_clientes")
+    dst_clientes = os.path.join("assets", "imagenes_clientes")
+
+    if os.path.exists(src_clientes):
+        if os.path.exists(dst_clientes):
+            shutil.rmtree(dst_clientes)
+        shutil.copytree(src_clientes, dst_clientes)
+
+    src_proyectos = os.path.join(temp_dir, "assets", "imagenes_proyectos")
+    dst_proyectos = os.path.join("assets", "imagenes_proyectos")
+
+    if os.path.exists(src_proyectos):
+        if os.path.exists(dst_proyectos):
+            shutil.rmtree(dst_proyectos)
+        shutil.copytree(src_proyectos, dst_proyectos)
+
+    # Limpiar temporal
+    shutil.rmtree(temp_dir)
+
 
 # ------------------ TOPBARS ------------------
 def topbar_inicial():
@@ -279,7 +356,43 @@ def pagina_inicio():
                     }
                     st.session_state.pagina = "perfil"
 
+    # ------------------------------- SECCIÓN BACKUP
+    
+    st.markdown("<hr>", unsafe_allow_html=True)
+    
+    st.markdown(
+        "<h2 style='color:white; text-align:right;'>Backup de datos</h2>",
+        unsafe_allow_html=True
+    )
+    
+    col1, col2 = st.columns(2)
+    
+    # -------- DESCARGAR BACKUP --------
+    with col1:
+        backup_buffer = crear_backup_zip()
+        st.download_button(
+            label="Descargar backup",
+            data=backup_buffer,
+            file_name="backup_datos.zip",
+            mime="application/zip",
+            use_container_width=True
+        )
+    
+    # -------- RESTAURAR BACKUP --------
+    with col2:
+        uploaded_zip = st.file_uploader(
+            "Restaurar desde backup (.zip)",
+            type=["zip"],
+            key="restore_backup"
+        )
+    
+        if uploaded_zip:
+            if st.button("Restaurar datos", use_container_width=True):
+                restaurar_desde_backup(uploaded_zip)
+                st.success("Backup restaurado correctamente.")
+                st.rerun()
 
+        
 # -------- PÁGINA PERFIL CLIENTE --------
 def pagina_perfil_cliente():
     topbar_secundaria()
@@ -1419,4 +1532,5 @@ if __name__ == "__main__":
 
     else:
         # fallback
+
         pagina_inicio()                               # El fallback se genera para que siempre se muestre una pagina en el programa.
