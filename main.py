@@ -116,7 +116,7 @@ def crear_backup_zip():
     buffer.seek(0)
     return buffer
 
-def restaurar_desde_backup(uploaded_zip):
+def restaurar_backup(uploaded_zip):
     temp_dir = "temp_restore"
 
     # Crear carpeta temporal
@@ -531,8 +531,10 @@ def pagina_nuevo_cliente():
     direccion = st.text_input("Ingrese Dirección del cliente")
 
     fecha_nacimiento = st.date_input(
-        "Fecha de nacimiento (opcional)",
-        value=None
+        "Fecha de nacimiento",
+        value=datetime.date(2000, 1, 1),
+        min_value=datetime.date(1900, 1, 1),
+        max_value=datetime.date.today()
     )
 
     col_img, col_form = st.columns([2, 3])
@@ -1542,4 +1544,5 @@ if __name__ == "__main__":
         # fallback
 
         pagina_inicio()                               # El fallback se genera para que siempre se muestre una pagina en el programa.
+
 
