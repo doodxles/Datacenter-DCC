@@ -532,7 +532,7 @@ def pagina_nuevo_cliente():
 
     fecha_nacimiento = st.date_input(
         "Fecha de nacimiento",
-        value=datetime.date(1900, 1, 1),
+        value=date(2000, 1, 1),
     )
 
     col_img, col_form = st.columns([2, 3])
@@ -1542,6 +1542,7 @@ if __name__ == "__main__":
         # fallback
 
         pagina_inicio()                               # El fallback se genera para que siempre se muestre una pagina en el programa.
+
 
 
 
